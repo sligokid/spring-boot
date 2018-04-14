@@ -33,8 +33,7 @@ class LaunchedApplication {
 
 	private final Process[] processes;
 
-	LaunchedApplication(File classesDirectory, File standardOut, File standardError,
-			Process... processes) {
+	LaunchedApplication(File classesDirectory, File standardOut, File standardError, Process... processes) {
 		this.classesDirectory = classesDirectory;
 		this.standardOut = standardOut;
 		this.standardError = standardError;

@@ -50,90 +50,91 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RunWith(Parameterized.class)
 public class DevToolsIntegrationTests {
 
+	@Rule
+	public JvmLauncher javaLauncher = new JvmLauncher();
+
 	private LaunchedApplication launchedApplication;
+
+	private TestRestTemplate template;
 
 	private final File serverPortFile = new File("target/server.port");
 
 	private final ApplicationLauncher applicationLauncher;
 
-	@Rule
-	public JvmLauncher javaLauncher = new JvmLauncher();
-
-	@Parameters(name = "{0}")
-	public static Object[] parameters() {
-		return new Object[] { new Object[] { new LocalApplicationLauncher() },
-				new Object[] { new ExplodedRemoteApplicationLauncher() },
-				new Object[] { new JarFileRemoteApplicationLauncher() } };
-	}
-
 	public DevToolsIntegrationTests(ApplicationLauncher applicationLauncher) {
 		this.applicationLauncher = applicationLauncher;
 	}
 
+	@Parameters(name = "{0}")
+	public static Object[] parameters() {
+		return new Object[] {new Object[] {new LocalApplicationLauncher()}, new Object[] {new ExplodedRemoteApplicationLauncher()}, new Object[] {new JarFileRemoteApplicationLauncher()}};
+	}
+
 	@Before
-	public void launchApplication() throws Exception {
+	public void before() throws Exception {
+		launchApplication();
+		initTestRestTemplate();
+	}
+
+	private void launchApplication() throws Exception {
 		this.serverPortFile.delete();
+
 		System.out.println("Launching " + this.javaLauncher.getClass());
-		this.launchedApplication = this.applicationLauncher
-				.launchApplication(this.javaLauncher);
+
+		this.launchedApplication = this.applicationLauncher.launchApplication(this.javaLauncher);
+	}
+
+	private void initTestRestTemplate() {
+		this.template = new TestRestTemplate();
 	}
 
 	@After
-	public void stopApplication() throws InterruptedException {
+	public void after() throws InterruptedException {
 		this.launchedApplication.stop();
 	}
 
 	@Test
 	public void addARequestMappingToAnExistingController() throws Exception {
-		TestRestTemplate template = new TestRestTemplate();
 		String urlBase = "http://localhost:" + awaitServerPort();
-		assertThat(template.getForObject(urlBase + "/one", String.class))
-				.isEqualTo("one");
-		assertThat(template.getForEntity(urlBase + "/two", String.class).getStatusCode())
-				.isEqualTo(HttpStatus.NOT_FOUND);
-		controller("com.example.ControllerOne").withRequestMapping("one")
-				.withRequestMapping("two").build();
-		assertThat(template.getForObject(urlBase + "/one", String.class))
-				.isEqualTo("one");
-		assertThat(template.getForObject("http://localhost:" + awaitServerPort() + "/two",
-				String.class)).isEqualTo("two");
+		assertThat(this.template.getForObject(urlBase + "/one", String.class)).isEqualTo("one");
+		assertThat(this.template.getForEntity(urlBase + "/two", String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+		controller("com.example.ControllerOne").withRequestMapping("one").withRequestMapping("two").build();
+
+		assertThat(this.template.getForObject(urlBase + "/one", String.class)).isEqualTo("one");
+		assertThat(this.template.getForObject("http://localhost:" + awaitServerPort() + "/two", String.class)).isEqualTo("two");
 	}
 
 	@Test
 	public void removeARequestMappingFromAnExistingController() throws Exception {
-		TestRestTemplate template = new TestRestTemplate();
-		assertThat(template.getForObject("http://localhost:" + awaitServerPort() + "/one",
-				String.class)).isEqualTo("one");
+		assertThat(this.template.getForObject("http://localhost:" + awaitServerPort() + "/one", String.class)).isEqualTo("one");
+
 		controller("com.example.ControllerOne").build();
-		assertThat(template.getForEntity("http://localhost:" + awaitServerPort() + "/one",
-				String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+		assertThat(this.template.getForEntity("http://localhost:" + awaitServerPort() + "/one", String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
 	@Test
 	public void createAController() throws Exception {
-		TestRestTemplate template = new TestRestTemplate();
 		String urlBase = "http://localhost:" + awaitServerPort();
-		assertThat(template.getForObject(urlBase + "/one", String.class))
-				.isEqualTo("one");
-		assertThat(template.getForEntity(urlBase + "/two", String.class).getStatusCode())
-				.isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(this.template.getForObject(urlBase + "/one", String.class)).isEqualTo("one");
+		assertThat(this.template.getForEntity(urlBase + "/two", String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
 		controller("com.example.ControllerTwo").withRequestMapping("two").build();
-		assertThat(template.getForObject(urlBase + "/one", String.class))
-				.isEqualTo("one");
-		assertThat(template.getForObject("http://localhost:" + awaitServerPort() + "/two",
-				String.class)).isEqualTo("two");
+
+		assertThat(this.template.getForObject(urlBase + "/one", String.class)).isEqualTo("one");
+		assertThat(this.template.getForObject("http://localhost:" + awaitServerPort() + "/two", String.class)).isEqualTo("two");
 
 	}
 
 	@Test
 	public void deleteAController() throws Exception {
-		TestRestTemplate template = new TestRestTemplate();
-		assertThat(template.getForObject("http://localhost:" + awaitServerPort() + "/one",
-				String.class)).isEqualTo("one");
-		assertThat(new File(this.launchedApplication.getClassesDirectory(),
-				"com/example/ControllerOne.class").delete()).isTrue();
-		assertThat(template.getForEntity("http://localhost:" + awaitServerPort() + "/one",
-				String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(this.template.getForObject("http://localhost:" + awaitServerPort() + "/one", String.class)).isEqualTo("one");
+
+		boolean deleted = new File(this.launchedApplication.getClassesDirectory(), "com/example/ControllerOne.class").delete();
+
+		assertThat(deleted).isTrue();
+		assertThat(this.template.getForEntity("http://localhost:" + awaitServerPort() + "/one", String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
 	}
 
@@ -142,13 +143,7 @@ public class DevToolsIntegrationTests {
 		while (this.serverPortFile.length() == 0) {
 			System.out.println("Getting server port " + this.serverPortFile.length());
 			if (System.currentTimeMillis() > end) {
-				throw new IllegalStateException(String.format(
-						"server.port file was not written within 30 seconds. "
-								+ "Application output:%n%s%s",
-						FileCopyUtils.copyToString(new FileReader(
-								this.launchedApplication.getStandardOut())),
-						FileCopyUtils.copyToString(new FileReader(
-								this.launchedApplication.getStandardError()))));
+				throw new IllegalStateException(String.format("server.port file was not written within 30 seconds. " + "Application output:%n%s%s", FileCopyUtils.copyToString(new FileReader(this.launchedApplication.getStandardOut())), FileCopyUtils.copyToString(new FileReader(this.launchedApplication.getStandardError()))));
 			}
 			Thread.sleep(100);
 		}
@@ -160,8 +155,7 @@ public class DevToolsIntegrationTests {
 	}
 
 	private ControllerBuilder controller(String name) {
-		return new ControllerBuilder(name,
-				this.launchedApplication.getClassesDirectory());
+		return new ControllerBuilder(name, this.launchedApplication.getClassesDirectory());
 	}
 
 	private static final class ControllerBuilder {
@@ -183,14 +177,9 @@ public class DevToolsIntegrationTests {
 		}
 
 		public void build() throws Exception {
-			Builder<Object> builder = new ByteBuddy().subclass(Object.class)
-					.name(this.name).annotateType(AnnotationDescription.Builder
-							.ofType(RestController.class).build());
+			Builder<Object> builder = new ByteBuddy().subclass(Object.class).name(this.name).annotateType(AnnotationDescription.Builder.ofType(RestController.class).build());
 			for (String mapping : this.mappings) {
-				builder = builder.defineMethod(mapping, String.class, Visibility.PUBLIC)
-						.intercept(FixedValue.value(mapping)).annotateMethod(
-								AnnotationDescription.Builder.ofType(RequestMapping.class)
-										.defineArray("value", mapping).build());
+				builder = builder.defineMethod(mapping, String.class, Visibility.PUBLIC).intercept(FixedValue.value(mapping)).annotateMethod(AnnotationDescription.Builder.ofType(RequestMapping.class).defineArray("value", mapping).build());
 			}
 			builder.make().saveIn(this.classesDirectory);
 		}

@@ -36,20 +36,12 @@ import org.springframework.util.StringUtils;
 abstract class RemoteApplicationLauncher implements ApplicationLauncher {
 
 	@Override
-	public LaunchedApplication launchApplication(JvmLauncher javaLauncher)
-			throws Exception {
-		LaunchedJvm applicationJvm = javaLauncher.launch("app",
-				createApplicationClassPath(), "com.example.DevToolsTestApplication",
-				"--server.port=12345", "--spring.devtools.remote.secret=secret");
+	public LaunchedApplication launchApplication(JvmLauncher javaLauncher) throws Exception {
+		LaunchedJvm applicationJvm = javaLauncher.launch("app", createApplicationClassPath(), "com.example.DevToolsTestApplication", "--server.port=12345", "--spring.devtools.remote.secret=secret");
 		awaitServerPort(applicationJvm.getStandardOut());
-		LaunchedJvm remoteSpringApplicationJvm = javaLauncher.launch(
-				"remote-spring-application", createRemoteSpringApplicationClassPath(),
-				RemoteSpringApplication.class.getName(),
-				"--spring.devtools.remote.secret=secret", "http://localhost:12345");
+		LaunchedJvm remoteSpringApplicationJvm = javaLauncher.launch("remote-spring-application", createRemoteSpringApplicationClassPath(), RemoteSpringApplication.class.getName(), "--spring.devtools.remote.secret=secret", "http://localhost:12345");
 		awaitRemoteSpringApplication(remoteSpringApplicationJvm.getStandardOut());
-		return new LaunchedApplication(new File("target/remote"),
-				applicationJvm.getStandardOut(), applicationJvm.getStandardError(),
-				applicationJvm.getProcess(), remoteSpringApplicationJvm.getProcess());
+		return new LaunchedApplication(new File("target/remote"), applicationJvm.getStandardOut(), applicationJvm.getStandardError(), applicationJvm.getProcess(), remoteSpringApplicationJvm.getProcess());
 	}
 
 	protected abstract String createApplicationClassPath() throws Exception;
@@ -58,8 +50,7 @@ abstract class RemoteApplicationLauncher implements ApplicationLauncher {
 		File remoteDirectory = new File("target/remote");
 		FileSystemUtils.deleteRecursively(remoteDirectory);
 		remoteDirectory.mkdirs();
-		FileSystemUtils.copyRecursively(new File("target/test-classes/com"),
-				new File("target/remote/com"));
+		FileSystemUtils.copyRecursively(new File("target/test-classes/com"), new File("target/remote/com"));
 		List<String> entries = new ArrayList<>();
 		entries.add("target/remote");
 		for (File jar : new File("target/dependencies").listFiles()) {
@@ -73,10 +64,7 @@ abstract class RemoteApplicationLauncher implements ApplicationLauncher {
 		File serverPortFile = new File("target/server.port");
 		while (serverPortFile.length() == 0) {
 			if (System.currentTimeMillis() > end) {
-				throw new IllegalStateException(String.format(
-						"server.port file was not written within 30 seconds. "
-								+ "Application output:%n%s",
-						FileCopyUtils.copyToString(new FileReader(standardOut))));
+				throw new IllegalStateException(String.format("server.port file was not written within 30 seconds. " + "Application output:%n%s", FileCopyUtils.copyToString(new FileReader(standardOut))));
 			}
 			Thread.sleep(100);
 		}
@@ -89,16 +77,13 @@ abstract class RemoteApplicationLauncher implements ApplicationLauncher {
 		long end = System.currentTimeMillis() + 30000;
 		while (!standardOut.exists()) {
 			if (System.currentTimeMillis() > end) {
-				throw new IllegalStateException(
-						"Standard out file was not written " + "within 30 seconds");
+				throw new IllegalStateException("Standard out file was not written " + "within 30 seconds");
 			}
 			Thread.sleep(100);
 		}
-		while (!FileCopyUtils.copyToString(new FileReader(standardOut))
-				.contains("Started RemoteSpringApplication")) {
+		while (!FileCopyUtils.copyToString(new FileReader(standardOut)).contains("Started RemoteSpringApplication")) {
 			if (System.currentTimeMillis() > end) {
-				throw new IllegalStateException(
-						"RemoteSpringApplication did not start within 30 seconds");
+				throw new IllegalStateException("RemoteSpringApplication did not start within 30 seconds");
 			}
 			Thread.sleep(100);
 		}

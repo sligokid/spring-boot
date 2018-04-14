@@ -16,13 +16,6 @@
 
 package org.springframework.boot.devtools.tests;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.util.FileSystemUtils;
-import org.springframework.util.StringUtils;
-
 /**
  * {@link ApplicationLauncher} that launches a remote application with its classes
  * available directly on the file system.
@@ -31,19 +24,11 @@ import org.springframework.util.StringUtils;
  */
 public class ExplodedRemoteApplicationLauncher extends RemoteApplicationLauncher {
 
+	private final ApplicationClasspathHelper applicationClasspathHelper = new ApplicationClasspathHelper();
+
 	@Override
 	protected String createApplicationClassPath() throws Exception {
-		File appDirectory = new File("target/app");
-		FileSystemUtils.deleteRecursively(appDirectory);
-		appDirectory.mkdirs();
-		FileSystemUtils.copyRecursively(new File("target/test-classes/com"),
-				new File("target/app/com"));
-		List<String> entries = new ArrayList<>();
-		entries.add("target/app");
-		for (File jar : new File("target/dependencies").listFiles()) {
-			entries.add(jar.getAbsolutePath());
-		}
-		return StringUtils.collectionToDelimitedString(entries, File.pathSeparator);
+		return this.applicationClasspathHelper.createApplicationClassPath();
 	}
 
 	@Override
